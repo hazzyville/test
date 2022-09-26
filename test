@@ -1,63 +1,63 @@
-testing repo SKX-PP
-Executive Summary - Week 1 (5-9)
+SKX-PP
+
+Executive Summary for September 2022
+
+
+
+
+Executive Summary - Week 1 (5-9)
 
 
 
 
 
-Executive Summary - Week 2 (12-16)
+Executive Summary - Week 2 (12-16)
 
 
 
 
 
-Executive Summary - Week 3 (19-23)
+Executive Summary - Week 3 (19-23)
+
+The Shoe - Overview 
+
+In the event to increase security posture of Skechers AWS cloud environment, Cloud Sec team must ensure that all Server Instances are monitored and logged by the Lacework security tool. 
+
+The laces - Current responsibilities/Events 
+
+As a continuation of the Lacework agent installation to ensure all our servers are compliant, I had meeting with William to discuss Lacework installation on Windows server instances, We initially identified few Windows based instances that requires a little tweak in the installation script. 
+Therefore, I provided guidance including the commands, MSI URL and AccessToken to use for the SKX-It-nonprod and SKX-it accounts where the windows instance are located.[1]
+
+Also had a meeting with Mohan to discuss progress regarding the challenges encountered during the attempt to install lacework agent in the Databricks account instances. I followed up the issue until I confirmed that the issue was resolved by modifying the security Group rule to allow the communication traffic from the agent. 
+
+[1] Install Windows Agent without a config.json Configuration File - https://docs.lacework.com/onboarding/windows-agent-install-with-powershell#install-windows-agent-without-a-configjson-configuration-file
+
+Implementation Roadmap - To enforce security posture based on Cloud security practices
+
+1) SSM Agent and policy requirement for new EC2 instances (Prerequisite for the Lacework agent installation script to successfully complete)
+
+Being that every instance in our environment is required to have Lacework agent installed and we have previously created an automation method using CloudWatch events rules to watches for RunInstances API and then trigger a lambda that uses SSM to run the lacework agent installation script "install.sh" on newly launched EC2 Instances. 
+
+To avoid the bypass/failure of the automation, I suggest that we implementation of some guardrail policy in the Organization's Service Control Policy (SCP) to enforce the Prerequisites for the lacework agent installation to be successful.  
+
+Two important requirements for the automation lambda to successfully install the lacework agent to all the newly launched Instances; 
+- All AMI’s used to launch the instance in the RunInstances API must have SSM agent pre-installed (this is default for Amazon linux 2 based AMIs). 
+- All Instance profile roles attached to the instance during the RunInstances Api must have SSM permissions including "ssm:SendCommand". 
+
+From my research, errors due to the latter can be mitigated by updating the existing automation lambda to first scan the instance profile role using the "simulate_principal_policy" API to simulate for the presence of the required "ssm:SendCommand" permission else, call "attach-role-policy" API to append the AmazonSSMFullAccess managed policy to the instance profile role. 
+
+2) Apply a PermissionBoundry SCP at the Organization level to restrict all CreateRole API to include a PB policy 
+
+This will ensure that even when a role is overly permissive, the permission boundary still restricts what the role can do in the environment. 
+
+The goal of this SCP is to deny creation of role without the specified PB that will restrict them from certain powerful/forbidden APIs even though they are attached with AdministratorAccess. 
+
+
+3) IAM findings alert Cleanup (Lacework/Ermetric reporting)
+
+According to the generated alert report from our security monitoring tool, we have over 900+ findings related the IAM from different AWS account in our environment in different finding types like; 
 
 
 
+Executive Summary - Week 4 (26-30)
 
-
-Executive Summary - Week 4 (26-30)
-Sept Summary 
-
-19th Monday 
-——
-*Meeting with William Doyle to discuss Lacework installation on windows machine, provided William with the procedure including the command and msi URL and AccessToken for  SKX-It-nonprod and SKX-it where the windows boxes are deployed.
-
-*Meeting with Mohan to discuss the failed Lacework agent installation in Databricks account. 
-
-
-Roadmap - Implementation 
-
-SSM Agent and policy requirement for new EC2 instances 
-
-** Seeing that every instance needs to have Lacework agent installed 
-** And we have an events rules/lambda that watches for RunInstances API. 
-** And then execute the sim document with the install.sh script for lacework 
-** It then means that the following must be enforced on the org and account level so that RunInstances API that do not meet them will fail. 
-
-- All RunInstances Api must have SSM permission attached to the instance profile. List specific SSM API that is needed. caveat ** How can actions in a role be scanned ??
-- All AMI’s used to carry out RunInstances API must have SSM agent installed. 
-- Add other conditions 
-- 
-
-
-## Using PermissionBoundry For all CreateRole API
-
-** This will ensure that even when a role is over permissive, the permission boundary still restricts what the role can do 
-
-
-## Cleanup Of Resources 
-** Using access analyzer and filter roles that are over permissive and assign the action 
-** See what actions the role has used in the past 6 month and restrict the role to use only these actions. 
-
-** On Ermetic/lacework these roles that are over permissive also show up here. So please have a look. And also use access analyzer 
-
-22/9/22 Thursday
-## Additional idea to improve  the Lacework agent installation lambda function. 
-
-The lambda function must initially call the "simulate-principal-policy" API to check if the instance profile specified by the Launch template in the RunInstances API event is allowed to perform the required SSM action(ssm:SendCommand) for the script to run successfully. 
-If Allowed, the installation can continue. Else, the function can call "attach-role-policy" API to append the AmazonSSMFillAccess managed policy to the instance profile. 
-
-Implement an SCP to required permission boundary during Creation of third party Roles
-The PB should Deny specific powerful actions that will be forbidden for the third party even though they have Administrator Access.
