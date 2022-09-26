@@ -1,1 +1,45 @@
 testing repo SKX-PP
+
+Sept Summary 
+
+19th Monday 
+——
+*Meeting with William Doyle to discuss Lacework installation on windows machine, provided William with the procedure including the command and msi URL and AccessToken for  SKX-It-nonprod and SKX-it where the windows boxes are deployed.
+
+*Meeting with Mohan to discuss the failed Lacework agent installation in Databricks account. 
+
+
+Roadmap - Implementation 
+
+SSM Agent and policy requirement for new EC2 instances 
+
+** Seeing that every instance needs to have Lacework agent installed 
+** And we have an events rules/lambda that watches for RunInstances API. 
+** And then execute the sim document with the install.sh script for lacework 
+** It then means that the following must be enforced on the org and account level so that RunInstances API that do not meet them will fail. 
+
+- All RunInstances Api must have SSM permission attached to the instance profile. List specific SSM API that is needed. caveat ** How can actions in a role be scanned ??
+- All AMI’s used to carry out RunInstances API must have SSM agent installed. 
+- Add other conditions 
+- 
+
+
+## Using PermissionBoundry For all CreateRole API
+
+** This will ensure that even when a role is over permissive, the permission boundary still restricts what the role can do 
+
+
+## Cleanup Of Resources 
+** Using access analyzer and filter roles that are over permissive and assign the action 
+** See what actions the role has used in the past 6 month and restrict the role to use only these actions. 
+
+** On Ermetic/lacework these roles that are over permissive also show up here. So please have a look. And also use access analyzer 
+
+22/9/22 Thursday
+## Additional idea to improve  the Lacework agent installation lambda function. 
+
+The lambda function must initially call the "simulate-principal-policy" API to check if the instance profile specified by the Launch template in the RunInstances API event is allowed to perform the required SSM action(ssm:SendCommand) for the script to run successfully. 
+If Allowed, the installation can continue. Else, the function can call "attach-role-policy" API to append the AmazonSSMFillAccess managed policy to the instance profile. 
+
+Implement an SCP to required permission boundary during Creation of third party Roles
+The PB should Deny specific powerful actions that will be forbidden for the third party even though they have Administrator Access.
