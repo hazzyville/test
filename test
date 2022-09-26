@@ -61,3 +61,19 @@ According to the generated alert report from our security monitoring tool, we ha
 
 Executive Summary - Week 4 (26-30)
 
+
+
+
+Type	Count	Action plan 
+Root user MFA is not enabled	1	Track account owner and ensure MFA enabled for root
+IAM user MFA is not enabled	4	Find user 
+Inactive IAM user	60	
+Inactive IAM role	412	
+Overprivileged IAM role	279	
+Overprivileged IAM user	13	
+Overprivileged IAM group	5	
+IAM user unused credentials 	77	
+IAM user access key are not rotated 	59	
+Root user activity detected	4	
+Unused SSO permission set	3	
+Total Critical findings 	917	
