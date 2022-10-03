@@ -77,3 +77,65 @@ IAM user access key are not rotated 	59
 Root user activity detected	4	
 Unused SSO permission set	3	
 Total Critical findings 	917	
+
+
+
+
+====
+import json
+import logging
+
+import boto3
+import botocore
+import time
+
+logging.getLogger().setLevel(logging.INFO)
+log = logging.getLogger(__name__)
+
+# Instantiate Boto3 clients & resources for every AWS service API called
+
+ssm_client = boto3.client("ssm")
+ec2_client = boto3.client("ec2")
+
+def cloudtrail_event_parser(event):
+    # Extract list of new EC2 instance  from the AWS CloudTrail resource creation event.
+    returned_event_fields = {}
+
+    returned_event_fields["instances_set"] = (
+        event.get("detail").get("responseElements").get("instancesSet")
+    )
+
+    return returned_event_fields
+
+
+def lambda_handler(event, context):
+
+    # Parse the passed CloudTrail event and extract pertinent EC2 launch fields
+    event_fields = cloudtrail_event_parser(event)
+    command = "install.sh"
+
+    # Run SSM Command on EC2 Instance. Instances must have SSM Agent Installed, else the script will fail
+    # https://docs.aws.amazon.com/systems-manager/latest/userguide/agent-install-al2.html
+    if event_fields.get("instances_set"):
+        for item in event_fields.get("instances_set").get("items"):
+            ec2_instance_id = item.get("instanceId")
+            print ("Instance is ", ec2_instance_id)
+
+            # adding some delay to ensure EC2 Instance are in a valid state before running SSM command
+
+            time.sleep(40)
+
+            response = ssm_client.send_command(
+                InstanceIds= [ec2_instance_id],
+                DocumentName='AWS-RunRemoteScript',
+                Parameters={
+                    'sourceType': ['S3'],
+                    "sourceInfo":["{\"path\":\"${LaceworkS3ObjectURL}\"}"],
+                    "commandLine":[command]
+                }
+            )
+    else:
+        log.info("'statusCode': 200")
+        log.info(f"'No Amazon EC2 resources to run SSM Commands on': 'Event ID: {event.get('id')}'")
+
+====
